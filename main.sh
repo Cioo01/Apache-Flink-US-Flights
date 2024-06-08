@@ -12,3 +12,8 @@ echo "HDFS setup complete"
 echo "Setting up Kafka topics"
 ./topics-setup.sh
 echo "Kafka topics set up"
+
+echo "Setting up Flink"
+./flink-setup.sh
+echo "Flink setup almost complete"
+echo "Przejdz do edycji pliku flink.properties"
