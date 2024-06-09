@@ -10,7 +10,7 @@ public class FinalWindowResult implements WindowFunction<FlightDataAgg, FlightDa
         FlightDataAgg result = null;
         for (FlightDataAgg agg : input) {
             if (result == null) {
-                result = new FlightDataAgg(agg.getState(), agg.getTotalDepartures(), agg.getTotalArrivals(), agg.getTotalDeparturesDelay(), agg.getTotalArrivalsDelay());
+                result = new FlightDataAgg(agg.getState(), agg.getDay(), agg.getTotalDepartures(), agg.getTotalArrivals(), agg.getTotalDeparturesDelay(), agg.getTotalArrivalsDelay());
             } else {
                 result.addDeparture(agg.getTotalDeparturesDelay());
                 result.addArrival(agg.getTotalArrivalsDelay());

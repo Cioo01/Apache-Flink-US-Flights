@@ -18,10 +18,11 @@ public class Connectors {
                     @Override
                     public void accept(PreparedStatement ps, FlightDataAgg data) throws SQLException {
                         ps.setString(1, data.getState());
-                        ps.setLong(2, data.getTotalDepartures());
-                        ps.setLong(3, data.getTotalDeparturesDelay());
-                        ps.setLong(4, data.getTotalArrivals());
-                        ps.setLong(5, data.getTotalArrivalsDelay());
+                        ps.setString(2, data.getDay());
+                        ps.setLong(3, data.getTotalDepartures());
+                        ps.setLong(4, data.getTotalDeparturesDelay());
+                        ps.setLong(5, data.getTotalArrivals());
+                        ps.setLong(6, data.getTotalArrivalsDelay());
                     }
                 };
         JdbcConnectionOptions connectionOptions = new
@@ -38,9 +39,9 @@ public class Connectors {
                 .build();
         SinkFunction<FlightDataAgg> jdbcSink =
                 JdbcSink.sink("insert into us_flights_sink" +
-                                "(us_state, total_departures, " +
+                                "(us_state, day, total_departures, " +
                                 "total_departures_delay, total_arrivals, total_arrivals_delay) \n" +
-                                "values (?, ?, ?, ?, ?)",
+                                "values (?, ?, ?, ?, ?, ?)",
                         statementBuilder,
                         executionOptions,
                         connectionOptions);

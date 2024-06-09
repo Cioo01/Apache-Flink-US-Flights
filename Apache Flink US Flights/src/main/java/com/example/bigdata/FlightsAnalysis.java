@@ -2,6 +2,7 @@ package com.example.bigdata;
 
 import com.example.bigdata.connectors.Connectors;
 import com.example.bigdata.model.AirportData;
+import com.example.bigdata.model.FlightAnomalyData;
 import com.example.bigdata.model.FlightData;
 import com.example.bigdata.model.FlightDataAgg;
 import com.example.bigdata.utils.*;
@@ -9,19 +10,22 @@ import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.windowing.time.Time;
 import java.text.SimpleDateFormat;
 import org.apache.flink.streaming.api.functions.ProcessFunction;
 import java.time.Duration;
 import java.util.Date;
 import java.util.Map;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
-import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
-import org.apache.flink.util.Collector;
 
+import org.apache.flink.streaming.api.windowing.assigners.SlidingEventTimeWindows;
+import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
+import org.apache.flink.util.Collector;
+import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
+import org.apache.flink.connector.kafka.sink.KafkaSink;
 
 public class FlightsAnalysis {
     public static void main(String[] args) throws Exception {
@@ -29,6 +33,8 @@ public class FlightsAnalysis {
         ParameterTool propertiesFromFile = ParameterTool.fromPropertiesFile("src/main/resources/flink.properties");
         ParameterTool propertiesFromArgs = ParameterTool.fromArgs(args);
         ParameterTool properties = propertiesFromFile.mergeWith(propertiesFromArgs);
+        int D = properties.getInt("D", 60);
+        int N = properties.getInt("N", 30);
 
         FlinkKafkaConsumer<String> consumer = new FlinkKafkaConsumer<>(
                 "flights-in-us",
@@ -38,13 +44,14 @@ public class FlightsAnalysis {
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         String airportPath = properties.get("airports.uri");
-        String delay = properties.get("delay");
+        String delay = properties.get("delay", "A");
         Map<String, AirportData> airports = AirportUtils.getAirportsFromFile(airportPath);
         DataStream<String> inputStream = env.addSource(consumer);
         DataStream<FlightData> flightDataDS = inputStream
                 .map((MapFunction<String, String[]>) txt -> txt.split(","))
                 .filter(array -> array.length == 25)
-                .filter(array -> array[0].startsWith("airline") == false)
+                .filter(array -> !array[0].startsWith("airline"))
+                .filter(array -> DateUtils.parseDateTime(array[23], new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"), array[24], "orderColumn") != null)
                 .map(array -> {
                     String airline = array[0];
                     Integer flightNumber = array[1].isEmpty() ? 0 : Integer.parseInt(array[1]);
@@ -66,7 +73,7 @@ public class FlightsAnalysis {
                     Date arrivalTime = DateUtils.parseDateTime(strArrivalTime, formatter, infoType, "arrivalTime");
                     Date cancellationTime = DateUtils.parseDateTime(strCancellationTime, formatter, infoType, "cancellationTime");
                     Date orderColumn = DateUtils.parseDateTime(strOrderColumn, formatter, infoType, "orderColumn");
-                    orderColumn = orderColumn == null ? scheduledDepartureTime : orderColumn;
+//                    orderColumn = orderColumn == null ? scheduledDepartureTime : orderColumn;
                     // print FlightData
 //                    System.out.println("FlightData: " + airline + " " + flightNumber + " " + startAirport + " " + destAirport + " " + scheduledDepartureTime + " " + scheduledArrivalTime + " " + departureTime + " " + arrivalTime + " " + diverted + " " + cancelled + " " + cancellationTime + " " + orderColumn + " " + infoType);
 
@@ -88,8 +95,9 @@ public class FlightsAnalysis {
         DataStream<FlightDataAgg> flightDataAggDS = flightDataDS
                 .map(fd -> {
                     String state = airports.get(fd.getStartAirport()).getState();
-
-                    FlightDataAgg agg = new FlightDataAgg(state, 0L, 0L, 0L, 0L);
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                    String day = dateFormat.format(fd.getOrderColumn());
+                    FlightDataAgg agg = new FlightDataAgg(state, day,0L, 0L, 0L, 0L);
 
                     agg.addDeparture(FlightUtils.getDelay(fd.getDepartureTime(), fd.getScheduledDepartureTime()));
                     agg.addArrival(FlightUtils.getDelay(fd.getArrivalTime(), fd.getScheduledArrivalTime()));
@@ -100,11 +108,23 @@ public class FlightsAnalysis {
                 .window(new DayWindowAssigner(delay))
                 .apply(new FinalWindowResult());
 
-
-
+        DataStream<FlightAnomalyData> anomalyDataStream = flightDataDS
+                .keyBy(FlightData::getDestAirport)
+                .window(SlidingEventTimeWindows.of(Time.minutes(D), Time.minutes(10)))
+                .process(new AnomalyDetectionProcessFunction(airports, N));
 
 //        flightDataAggDS.print();
+
         flightDataAggDS.addSink(Connectors.getMySQLSink(properties));
+
+        anomalyDataStream.map((MapFunction<FlightAnomalyData, String>) Object::toString).sinkTo(KafkaSink.<String>builder()
+        .setBootstrapServers(properties.get("bootstrap.servers"))
+        .setRecordSerializer(KafkaRecordSerializationSchema.builder()
+                .setTopic("flight-anomalies")
+                .setValueSerializationSchema(new SimpleStringSchema())
+                .build()
+        ).setDeliverGuarantee(DeliveryGuarantee.AT_LEAST_ONCE)
+        .build());
         env.execute("FlightsAnalysis");
     }
 

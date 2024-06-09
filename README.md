@@ -1,5 +1,6 @@
-### Uruchom klaster poniższą komendą:
+# Apache-Flink-US-Flights
 
+### Uruchom klaster poniższą komendą:
 ```sh
 gcloud dataproc clusters create ${CLUSTER_NAME} \
 --enable-component-gateway --region ${REGION} --subnet default \
@@ -18,7 +19,7 @@ gs://goog-dataproc-initialization-actions-${REGION}/kafka/kafka.sh
 export BUCKET_NAME="placeholder" # <- Zmień na nazwę swojego bucketa
 export STREAM_DIR_DATA="gs://$BUCKET_NAME/nazwa_folderu" # <- dostosuj sciezki do folderu, w ktorym przechowujesz dane strumieniowe
 export STATIC_DATA="gs://$BUCKET_NAME/nazwa_pliku.csv" # <- wprowadz nazwe pliku, ktory zawiera dane statyczne
-export INPUT_DIR="stream-data" # zmien nazwe folderu z danymi strumieniowymi
+export INPUT_DIR="stream-data" # <- zmien nazwe folderu z danymi strumieniowymi
 ```
 ### Stworz folder na dane MySQL
 ```sh
@@ -60,13 +61,13 @@ mysql -u streamuser -pstream flights
 
 ### Stworz tabele do przechowywania agregatow
 ```sql
-create table us_flights_sink
-(
-    us_state                varchar(2),
-    total_departures        bigint,
-    total_departures_delay  bigint,
-    total_arrivals          bigint,
-    total_arrivals_delay    bigint
+CREATE TABLE us_flights_sink (
+    us_state                VARCHAR(2),
+    day                     DATE,
+    total_departures        BIGINT,
+    total_departures_delay  BIGINT,
+    total_arrivals          BIGINT,
+    total_arrivals_delay    BIGINT
 );
 ```
 ### Wyjdz z mysql poleceniem exit
@@ -85,6 +86,19 @@ chmod +x *.sh
 cd src/main/resources
 hostname -I # sprawdz IP maszyny, skopiuj pierwszy z lewej
 nano flink.resources
+```
+
+### Parametry, ktore nalezy uzupelnic:
+```
+airports.uri = sciezka_do_pliku csv
+mysql.url = jdbc:mysql://ip_maszyny:6033/flights
+```
+
+### Parametry, ktore badaja dzialanie programu
+```
+delay = A
+D = 60
+N = 30
 ```
 
 ### Uruchom skrypt producenta

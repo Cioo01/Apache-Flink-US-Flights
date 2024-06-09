@@ -13,6 +13,8 @@ echo "mysql.url = jdbc:mysql://ip_maszyny:6033/flights" >> flink.properties
 echo "mysql.username = streamuser" >> flink.properties
 echo "mysql.password = stream" >> flink.properties
 echo "delay = A" >> flink.properties
+echo "D = 60" >> flink.properties
+echo "N = 30" >> flink.properties
 
 mkdir -p src/main/resources/
 mv flink.properties src/main/resources/

@@ -4,13 +4,15 @@ import java.util.Date;
 
 public class FlightDataAgg {
     private String state;
+    private String day;
     private Long totalDepartures;
     private Long totalDeparturesDelay;
     private Long totalArrivals;
     private Long totalArrivalsDelay;
 
-    public FlightDataAgg(String state, Long totalDepartures, Long totalDeparturesDelay, Long totalArrivals, Long totalArrivalsDelay) {
+    public FlightDataAgg(String state, String day, Long totalDepartures, Long totalDeparturesDelay, Long totalArrivals, Long totalArrivalsDelay) {
         this.state = state;
+        this.day = day;
         this.totalDepartures = totalDepartures;
         this.totalDeparturesDelay = totalDeparturesDelay;
         this.totalArrivals = totalArrivals;
@@ -20,8 +22,13 @@ public class FlightDataAgg {
     public String getState() {
         return state;
     }
+    public String getDay() {
+        return day;
+    }
 
-
+    public void setDay(String day) {
+        this.day = day;
+    }
     public Long getTotalDepartures() {
         return totalDepartures;
     }
@@ -64,6 +71,7 @@ public class FlightDataAgg {
     public String toString() {
         return "FlightDataAgg{" +
                 "state='" + state + '\'' +
+                ", day='" + day + '\'' +
                 ", totalDepartures=" + totalDepartures +
                 ", totalDeparturesDelay=" + totalDeparturesDelay +
                 ", totalArrivals=" + totalArrivals +
