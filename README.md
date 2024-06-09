@@ -21,56 +21,6 @@ export STREAM_DIR_DATA="gs://$BUCKET_NAME/nazwa_folderu" # <- dostosuj sciezki d
 export STATIC_DATA="gs://$BUCKET_NAME/nazwa_pliku.csv" # <- wprowadz nazwe pliku, ktory zawiera dane statyczne
 export INPUT_DIR="stream-data" # <- zmien nazwe folderu z danymi strumieniowymi
 ```
-### Stworz folder na dane MySQL
-```sh
-mkdir /tmp/datadir
-```
-
-### Uruchom kontener z instalacja bazy danych MySQL ponizszym poleceniem
-```sh
-docker run --name mymysql -v /tmp/datadir:/var/lib/mysql -p 6033:3306 \
- -e MYSQL_ROOT_PASSWORD=flink -d mysql:debian
-```
-
-### Wejdz do dockera z baza danych
-
-```sh
-docker exec -it mymysql bash
-```
-
-### Zaloguj sie do bazy
-
-```sh
-mysql -uroot -pflink
-```
-
-### Utworz uzytkownika bazy danych
-
-```sql
-CREATE USER 'streamuser'@'%' IDENTIFIED BY 'stream';
-CREATE DATABASE IF NOT EXISTS flights CHARACTER SET utf8;
-GRANT ALL ON flights.* TO 'streamuser'@'%';
-```
-
-### Wyjdz z mysql poleceniem exit
-
-### Zaloguj sie na nowoutworzonego uzytkownika do bazy flights
-```sh
-mysql -u streamuser -pstream flights
-```
-
-### Stworz tabele do przechowywania agregatow
-```sql
-CREATE TABLE us_flights_sink (
-    us_state                VARCHAR(2),
-    day                     DATE,
-    total_departures        BIGINT,
-    total_departures_delay  BIGINT,
-    total_arrivals          BIGINT,
-    total_arrivals_delay    BIGINT
-);
-```
-### Wyjdz z mysql poleceniem exit
 
 ### Otworz nowy terminal (zebatka -> New connection/Nowe polaczenie) i nadaj prawo do wykonywania plikom .sh
 ```sh
@@ -81,17 +31,16 @@ chmod +x *.sh
 ```sh
 ./main.sh
 ```
-### Przejdz do folderu src/main/resources, zostal tam stworzony plik flink.properties, w ktorym okreslisz paramtery programu.
+### Otworz plik flink.properties, w ktorym okreslisz paramtery programu.
 ```sh
-cd src/main/resources
 hostname -I # sprawdz IP maszyny, skopiuj pierwszy z lewej
-nano flink.resources
+nano  src/main/resources/flink.properties
 ```
 
 ### Parametry, ktore nalezy uzupelnic:
 ```
-airports.uri = sciezka_do_pliku csv
-mysql.url = jdbc:mysql://ip_maszyny:6033/flights
+airports.uri = sciezka do pliku csv
+mysql.url = jdbc:mysql://IP_MASZYNY:6033/flights
 ```
 
 ### Parametry, ktore badaja dzialanie programu
@@ -111,15 +60,10 @@ cd ~
 ```sh
 ./consumer.sh
 ```
+### W nowym terminalu po chwili, wyswietl wynik agregacji
 
-### Zaloguj sie do bazy
 ```sh
-mysql -u streamuser -pstream flights
-```
-
-### Wykonaj polecenie aby zobaczyc wyniki - polecam uzyc limit <liczba> na koncu
-```sql
-select * from us_flights_sink;
+./sql-show-result.sh
 ```
 
 ### Jezeli z jakiegos powodu chcialbys zaczac od poczatku, wywolaj nastepujacy skrypt

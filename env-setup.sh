@@ -4,7 +4,6 @@ export CLUSTER_NAME=$(/usr/share/google/get_metadata_value attributes/dataproc-c
 export BUCKET_NAME="placeholder" # <- do zmiany
 export TOPIC_NAME="flights-in-us"
 export ANOMALY_TOPIC_NAME="flight-anomalies"
-export GROUP_NAME="flights-group"
 export INPUT_DIR="stream-data" # <- do zmiany
 export SLEEP_TIME="10"
 export HEADER_LENGTH="1"
