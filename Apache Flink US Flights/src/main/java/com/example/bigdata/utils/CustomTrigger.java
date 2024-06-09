@@ -2,20 +2,18 @@ package com.example.bigdata.utils;
 import org.apache.flink.streaming.api.windowing.triggers.Trigger;
 import org.apache.flink.streaming.api.windowing.triggers.TriggerResult;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
-
-import java.util.Objects;
-
 public class CustomTrigger extends Trigger<Object, TimeWindow> {
 
     @Override
     public TriggerResult onElement(Object element, long timestamp, TimeWindow window, TriggerContext ctx) {
-        if (Objects.equals(FlinkPropertiesUtil.getDelay(), "A")) {
+        if (FlinkPropertiesUtil.getDelay().equals("A")) {
             return TriggerResult.FIRE;
         } else {
             ctx.registerEventTimeTimer(window.maxTimestamp());
             return TriggerResult.CONTINUE;
         }
     }
+
     @Override
     public TriggerResult onProcessingTime(long time, TimeWindow window, TriggerContext ctx) {
         return TriggerResult.CONTINUE;
@@ -23,7 +21,7 @@ public class CustomTrigger extends Trigger<Object, TimeWindow> {
     @Override
     public TriggerResult onEventTime(long time, TimeWindow window, TriggerContext ctx) {
         String delay = FlinkPropertiesUtil.getDelay();
-        if (Objects.equals(delay, "A")) {
+        if (delay.equals("A")) {
             return TriggerResult.CONTINUE;
         } else {
             return time == window.maxTimestamp() ? TriggerResult.FIRE : TriggerResult.CONTINUE;
@@ -31,7 +29,7 @@ public class CustomTrigger extends Trigger<Object, TimeWindow> {
     }
     @Override
     public void clear(TimeWindow window, TriggerContext ctx) {
-        if (Objects.equals(FlinkPropertiesUtil.getDelay(), "A")) {
+        if (FlinkPropertiesUtil.getDelay().equals("A")) {
             ctx.deleteEventTimeTimer(window.maxTimestamp());
         }
     }
@@ -46,7 +44,7 @@ public class CustomTrigger extends Trigger<Object, TimeWindow> {
 
     @Override
     public void onMerge(TimeWindow window, OnMergeContext ctx) {
-        if (!Objects.equals(FlinkPropertiesUtil.getDelay(), "A")) {
+        if (!FlinkPropertiesUtil.getDelay().equals("A")) {
             long windowMaxTimestamp = window.maxTimestamp();
             if (windowMaxTimestamp > ctx.getCurrentWatermark()) {
                 ctx.registerEventTimeTimer(windowMaxTimestamp);

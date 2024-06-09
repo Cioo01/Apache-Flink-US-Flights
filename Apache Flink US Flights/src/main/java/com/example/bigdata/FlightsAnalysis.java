@@ -1,6 +1,5 @@
 package com.example.bigdata;
 
-import com.example.bigdata.connectors.Connectors;
 import com.example.bigdata.model.AirportData;
 import com.example.bigdata.model.FlightAnomalyData;
 import com.example.bigdata.model.FlightData;
@@ -26,6 +25,8 @@ import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.util.Collector;
 import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
+
+import static com.example.bigdata.connectors.Connectors.getMySQLSink;
 
 public class FlightsAnalysis {
     public static void main(String[] args) throws Exception {
@@ -114,19 +115,17 @@ public class FlightsAnalysis {
                 .process(new AnomalyDetectionProcessFunction(airports, N));
 
 //        flightDataAggDS.print();
-
-        flightDataAggDS.addSink(Connectors.getMySQLSink(properties));
-
         anomalyDataStream.map((MapFunction<FlightAnomalyData, String>) Object::toString).sinkTo(KafkaSink.<String>builder()
-        .setBootstrapServers(properties.get("bootstrap.servers"))
-        .setRecordSerializer(KafkaRecordSerializationSchema.builder()
-                .setTopic("flight-anomalies")
-                .setValueSerializationSchema(new SimpleStringSchema())
-                .build()
-        ).setDeliverGuarantee(DeliveryGuarantee.AT_LEAST_ONCE)
-        .build());
+                .setBootstrapServers(properties.get("bootstrap.servers"))
+                .setRecordSerializer(KafkaRecordSerializationSchema.builder()
+                        .setTopic("flight-anomalies")
+                        .setValueSerializationSchema(new SimpleStringSchema())
+                        .build()
+                ).setDeliverGuarantee(DeliveryGuarantee.AT_LEAST_ONCE)
+                .build());
+        flightDataAggDS.addSink(getMySQLSink(properties));
+
         env.execute("FlightsAnalysis");
     }
-
     }
 
