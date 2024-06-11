@@ -18,7 +18,7 @@ cd ~/
 unzip project2.zip
 ```
 
-### Ustaw zmienne w pliku env-setup.sh
+### Set variables in the env-setup.sh file
 ```sh
 export BUCKET_NAME="placeholder" # <- Change to the name of your bucket
 export STREAM_DIR_DATA="gs://$BUCKET_NAME/nazwa_folderu" # <- Adjust paths to the folder where you store the file simulating the stream data
