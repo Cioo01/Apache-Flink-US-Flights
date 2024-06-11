@@ -60,7 +60,7 @@ cd ~
 ./producer.sh
 ```
 
-### Otwórz nowy terminal i uruchom skrypt uruchamiający flinkowego konsumenta
+### Open a new terminal and run the script to start the Flink consumer
 ```sh
 ./consumer.sh
 ```
