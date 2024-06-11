@@ -1,6 +1,6 @@
 # Apache-Flink-US-Flights
 
-### Uruchom klaster poniższą komendą:
+### Start the cluster with the following command:
 ```sh
 gcloud dataproc clusters create ${CLUSTER_NAME} \
 --enable-component-gateway --region ${REGION} --subnet default \
@@ -12,7 +12,7 @@ gcloud dataproc clusters create ${CLUSTER_NAME} \
 --initialization-actions \
 gs://goog-dataproc-initialization-actions-${REGION}/kafka/kafka.sh
 ```
-### Wgraj zip na klaster i przejdź do głównego folderu
+### Upload the zip to the cluster and navigate to the main folder
 ```sh
 cd ~/
 unzip project2.zip
@@ -20,41 +20,41 @@ unzip project2.zip
 
 ### Ustaw zmienne w pliku env-setup.sh
 ```sh
-export BUCKET_NAME="placeholder" # <- Zmień na nazwę swojego bucketa
-export STREAM_DIR_DATA="gs://$BUCKET_NAME/nazwa_folderu" # <- dostosuj sciezki do folderu, w ktorym przechowujesz dane strumieniowe
-export STATIC_DATA="gs://$BUCKET_NAME/nazwa_pliku.csv" # <- wprowadz nazwe pliku, ktory zawiera dane statyczne
-export INPUT_DIR="stream-data" # <- zmien nazwe folderu z danymi strumieniowymi
+export BUCKET_NAME="placeholder" # <- Change to the name of your bucket
+export STREAM_DIR_DATA="gs://$BUCKET_NAME/nazwa_folderu" # <- Adjust paths to the folder where you store the file simulating the stream data
+export STATIC_DATA="gs://$BUCKET_NAME/nazwa_pliku.csv" # <- Enter the name of the file that contains the static data
+export INPUT_DIR="stream-data" # <- Change the name of the folder with the stream data
 ```
 
-### Otwórz nowy terminal (zębatka -> New connection/Nowe połączenie) i nadaj prawo do wykonywania plikom .sh
+### Open a new terminal (gear icon -> New connection) and grant execution rights to the .sh files
 ```sh
 chmod +x *.sh
 ```
 
-### Po wykonaniu powyższych kroków, uruchom skrypt main (wszelkie ostrzeżenia o opóźnieniu możesz spokojnie pominąć).
+### After completing the above steps, run the main script (you can ignore any delay warnings).
 ```sh
 ./main.sh
 ```
-### Otwórz plik flink.properties, w którym określisz paramtery programu.
+### Open the flink.properties file to set the program parameters.
 ```sh
-hostname -I # sprawdź IP maszyny, skopiuj pierwszy z lewej
+hostname -I # check the machine's IP, copy the first one on the left
 nano  ~/src/main/resources/flink.properties
 ```
 
-### Parametry, ktore należy uzupełnić:
+### Parameters to fill in:
 ```
-airports.uri = sciezka do pliku csv
-mysql.url = jdbc:mysql://IP_MASZYNY:6033/flights
+airports.uri = path_to_the_csv_file
+mysql.url = jdbc:mysql://MACHINE_IP:6033/flights
 ```
 
-### Parametry, ktore badają działanie programu
+### Parameters to test the program:
 ```
 delay = A
 D = 60
 N = 30
 ```
 
-### Uruchom skrypt producenta
+### Run the producer script
 ```sh
 cd ~
 ./producer.sh
@@ -64,29 +64,29 @@ cd ~
 ```sh
 ./consumer.sh
 ```
-### W nowym terminalu po chwili, wyświetl wynik agregacji
+### In a new terminal, after a moment, display the aggregation result
 
 ```sh
 ./sql-show-result.sh
 ```
 
-### Uruchom konsumenta anomalii
+### Start the anomaly consumer
 ```sh
 ./anomaly-consumer.sh
 ```
 
-### Jezeli z jakiegoś powodu chciałbyś zacząć od początku, wywołaj następujący skrypt (!UWAGA! - skrypt usuwa wszystko)
+### If for any reason you want to start from scratch, run the following script (WARNING! - the script deletes everything)
 ```sh
 ./cleanup.sh
 ```
 
-## Transformacje - obraz czasu rzeczywistego
+## Transformations - Real-time image
 ```java
 .filter(array -> array.length == 25)
 .filter(array -> !array[0].startsWith("airline"))
 .filter(array -> DateUtils.parseDateTime(array[23], new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"), array[24], "orderColumn") != null)
 ```
-Filtrowanie wyników dla rekordów, które są za krótkie, pomijam headery i sprawdzam czy kolumna, według której nadawany jest watermark jest nullem czy nie.
+Filtering results for records that are too short, skipping headers, and checking if the column used to set the watermark is null or not.
 
 ```java
 Map<String, AirportData> airports = AirportUtils.getAirportsFromFile(airportPath);
@@ -109,10 +109,10 @@ DataStream<FlightDataAgg> flightDataAggDS = flightDataDS
         .window(new DayWindowAssigner(delay))
         .apply(new FinalWindowResult());
 ```
-Obliczany agregat na poziomie stanu i dnia, sume opóźnień dla przylotów i odlotów. Służy do tego funkcja getDelay, która sumuje wartości i weryfikuje czy wynik jest większy od zera, a następnie dodaje do sumy. Stan uzyskiwany jest z pliku statycznego, który wczytywany jest do mapy.
+Aggregate calculation at the state and day level, sum of delays for arrivals and departures. The getDelay function is used to sum the values and check if the result is greater than zero, then adds to the total. The state is obtained from a static file that is loaded into a map.
 
-## Utrzymanie obrazu czasu rzeczywistego tryb A i C
-W projekcie zaimplementowano własny Trigger, który w zależności od trybu wyzwala wyniki w określony sposób.
+## Maintaining real-time image mode A and C
+The project implemented a custom Trigger that triggers results in a specific way depending on the mode.
 ```java
 @Override
 public TriggerResult onElement(Object element, long timestamp, TimeWindow window, TriggerContext ctx) {
@@ -126,9 +126,9 @@ public TriggerResult onElement(Object element, long timestamp, TimeWindow window
     }
 }
 ```
-W całej klasie CustomTrigger sprawdzany jest tryb, w jakim ma działać aplikacja i w zależności od niego, dostosowywana jest emisja wyników. Powyższy przykład prezentuje zasadę implementacji pozostałych funkcji.
+The entire CustomTrigger class checks the mode the application is to run in and adjusts the emission of results accordingly. The above example demonstrates the principle of implementing other functions.
 
-## Wykrywanie anomalii
+## Anomaly Detection
 
 ```java
 DataStream<FlightAnomalyData> anomalyDataStream = flightDataDS
@@ -137,7 +137,7 @@ DataStream<FlightAnomalyData> anomalyDataStream = flightDataDS
         .process(new AnomalyDetectionProcessFunction(airports, N));
 ```
 
-Kluczowanie następuje po lotnisku, a następnie oknem przesuwnym sprawdzamy ile samolotów zmierza w kierunku lotniska docelowego. Funkcja AnomalyDetectionProcessFunction bierze za parametr mapę z lotniskami oraz liczbę samolotów, które mają dolecieć do nas w ciągu 30 minut. W funkcji wykonywane jest filtrowanie oraz sumowanie zdarzeń. Fragment logiki znajduje się poniżej
+The keying is done by the airport, and then a sliding window checks how many planes are heading towards the destination airport. The AnomalyDetectionProcessFunction takes as a parameter a map of airports and the number of planes that are to arrive within 30 minutes. Filtering and summing events are performed in the function. A fragment of the logic is shown below:
 
 ```java
 for (FlightData flight : elements) {
@@ -156,24 +156,24 @@ for (FlightData flight : elements) {
 }
 ```
 
-## Program przetwarzający strumienie danych; skrypt uruchamiający
-Skrypt uruchamiający program to skrypt consumer.sh, natomiast wszystkie jego parametry można wyedytować w pliku flink.properties (zgodnie z instrukcją wyżej).
+## Data Stream Processing Program; Startup Script
+The script to start the program is consumer.sh, while all its parameters can be edited in the flink.properties file (as per the instructions above).
 
-## Miejsce utrzymywania obrazów czasu rzeczywistego – skrypt tworzący
-Skrypt tworzący miejsce utrzymywania czasu rzeczywistego jest zawarty w skrypcie mysql-setup.sh, natomiast jest on uruchamiany w wywołaniu skryptu main.sh.
+## Real-time image storage location – creation script
+The script creating the real-time image storage location is included in the mysql-setup.sh script, which is executed in the main.sh script call.
 
-## Miejsce utrzymywania obrazów czasu rzeczywistego – cechy
-Zdecydowałem się użyć bazy MySQL, ponieważ zapewnia ona:
-- integrowalność - zapewnia łatwą integrację i obsługę,
-- wydajność - oferuje dobre wsparcie dla dużych ilości danych i wysokiej wydajności zapytań,
-- stabilność i niezawodność
+## Real-time image storage location – features
+MySQL was chosen as the storage database because it provides:
+- Integrability - ensures easy integration and handling,
+- Performance - offers good support for large data volumes and high query performance,
+- Stability and reliability
 
-## Konsument: skrypt odczytujący wyniki przetwarzania
-Skrypt do odczytu obrazu rzeczywistego:
+## Consumer: script to read processing results
+Script to read the real-time image:
 ```sh
 consumer.sh
 ```
-Skrypt do odczytu anomalii:
+Script to read anomalies:
 ```sh
 anomaly-consumer.sh
 ```
